@@ -68,7 +68,7 @@ Credentials created in n8n UI and mapped to workflows:
 
 | Credential Name | Type | Used by |
 |---|---|---|
-| `n8n-claw Diogo` | Telegram API | n8n-claw Agent (Telegram Trigger + Reply) |
+| `n8n-claw Bot` | Telegram API | n8n-claw Agent (Telegram Trigger + Reply) |
 | `Postgres (Supabase)` | PostgreSQL | All DB nodes (host: `127.0.0.1:5432`) |
 | `Anthropic account` | Anthropic API | Claude node |
 | `HTTP Header Auth (Kong)` | HTTP Header Auth | Kong API gateway (header: `apikey`) |

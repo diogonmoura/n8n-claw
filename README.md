@@ -56,7 +56,7 @@ Telegram  -->  n8n webhook  -->  n8n-claw Agent (Claude)
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/YOUR_ORG/n8n-claw-diogo.git /opt/n8n-claw
+git clone https://github.com/diogonmoura/n8n-claw.git /opt/n8n-claw
 cd /opt/n8n-claw
 
 # 2. Create and edit .env
