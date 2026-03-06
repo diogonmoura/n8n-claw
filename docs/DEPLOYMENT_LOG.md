@@ -362,3 +362,74 @@ docker exec n8n-claw-db psql -U postgres -d postgres -c \
 docker exec n8n-claw-db psql -U postgres -d postgres -c \
   "UPDATE mcp_registry SET mcp_url='http://localhost:5678/mcp/<path>' WHERE path='<path>';"
 ```
+
+---
+
+## Redeployable Repo (github.com/diogonmoura/n8n-claw)
+
+After the original deployment was stable, a redeployable version of the entire stack was packaged and published at **https://github.com/diogonmoura/n8n-claw**.
+
+### What was built
+
+| File / Folder | Purpose |
+|---|---|
+| `setup.sh` | Fully automated installer — `--native` (systemd) or `--docker`, auto-detects Debian/Ubuntu |
+| `.env.example` | All configuration in one place — only file the user needs to edit |
+| `CHECKLIST.md` | Step-by-step guide from zero to running bot |
+| `scripts/generate-secrets.py` | Auto-generates `POSTGRES_PASSWORD`, `SUPABASE_ADMIN_PASSWORD`, `SUPABASE_JWT_SECRET`, anon + service JWTs |
+| `scripts/generate-n8n-api-key.py` | Derives `public-api` JWT from `/.n8n/config` encryption key |
+| `scripts/setup-db.py` | Imports workflows into n8n SQLite, inserts API key with correct scopes, fixes cross-workflow ID references |
+| `scripts/phase2-wire-credentials.py` | Wires n8n credential UUIDs into all workflow nodes (both tables) after manual UI creation |
+| `workflows/*.json` | All 6 workflows parameterized with `{{PLACEHOLDER}}` and `REPLACE_*` markers |
+| `supabase/migrations/001_schema.sql` | Full DB schema |
+| `supabase/migrations/002_seed_en.sql` | English seed data with `{{USER_*}}` placeholders |
+| `supabase/kong.yml` | Kong config template — filled by `setup.sh` |
+| `docker-compose.supabase.yml` | Supabase stack (Docker) |
+| `docker-compose.n8n.yml` | n8n Docker stack (optional) |
+| `n8n-systemd/n8n.service` | systemd unit template (native mode) |
+| `docs/DEPLOYMENT_LOG.md` | This file |
+
+### Workflow parameterization applied
+
+All workflow JSONs were scrubbed of live values and replaced with placeholders that `setup-db.py` fills at deploy time:
+
+| Placeholder | Replaced with |
+|---|---|
+| `REPLACE_WITH_YOUR_CREDENTIAL_ID` | Real n8n credential UUID (looked up from DB by type) |
+| `{{SUPABASE_URL}}` | Kong gateway URL from `.env` |
+| `{{N8N_URL}}` | n8n public URL from `.env` |
+| `{{N8N_PUBLIC_API_KEY}}` | Generated `public-api` JWT |
+| `{{SUPABASE_SERVICE_KEY}}` | Supabase service role JWT from `.env` |
+| `REPLACE_MCP_BUILDER_ID` | n8n workflow ID assigned after import |
+| `REPLACE_REMINDER_FACTORY_ID` | n8n workflow ID assigned after import |
+| `REPLACE_WORKFLOW_BUILDER_ID` | n8n workflow ID assigned after import |
+
+### Security audit
+
+A 16-point scan was run before making the repo public. Items found and fixed:
+
+| Finding | Fix |
+|---|---|
+| Real server IP hardcoded in DEPLOYMENT_LOG.md | → `YOUR_SERVER_IP` placeholder |
+| Real public domain hardcoded in DEPLOYMENT_LOG.md | → `n8n.yourdomain.com` placeholder |
+| Real n8n workflow IDs in DEPLOYMENT_LOG.md | → `<auto-assigned after import>` |
+| Real n8n credential UUIDs in DEPLOYMENT_LOG.md | → `<your-*-cred-id>` placeholders |
+| Hardcoded `supabase_admin` SUPERUSER password in `001_schema.sql` | → `CHANGE_ME_SUPABASE_ADMIN_PASSWORD` substituted at runtime via `sed` in `setup.sh` |
+
+Items confirmed clean: no JWTs, no API keys, no Telegram tokens, no email addresses, no SSH keys, no real passwords anywhere in the committed files.
+
+### `SUPABASE_ADMIN_PASSWORD` handling
+
+The original `001_schema.sql` had a hardcoded `supabase_admin` SUPERUSER password. Fixed by:
+
+1. Adding `SUPABASE_ADMIN_PASSWORD=` to `.env.example` (auto-generated section)
+2. `generate-secrets.py` now generates and writes it to `.env`
+3. `setup.sh`'s `run_migrations()` pipes the SQL through `sed` before sending to psql:
+
+```bash
+sed "s|CHANGE_ME_SUPABASE_ADMIN_PASSWORD|${SUPABASE_ADMIN_PASSWORD}|g" \
+  supabase/migrations/001_schema.sql \
+  | docker exec -i n8n-claw-db psql -U postgres -d postgres --set ON_ERROR_STOP=off
+```
+
+The placeholder stays in the file — the real password only exists in `.env` (which is gitignored) and is injected at runtime.
