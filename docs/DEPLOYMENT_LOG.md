@@ -1,11 +1,11 @@
-# n8n-claw Deployment Log — 192.168.4.236
+# n8n-claw Deployment Log
 
 ## Objective
 Deploy the [n8n-claw](https://github.com/freddy-schuetz/n8n-claw) self-hosted AI agent stack onto an existing n8n Proxmox LXC server. n8n was already installed as a native systemd service; only the supplementary Supabase stack (PostgreSQL, PostgREST, Kong, Supabase Studio) and the n8n workflows needed to be deployed.
 
-**Target server:** Proxmox LXC — Debian 13 (trixie) — 192.168.4.236  
-**n8n:** native systemd service, SQLite DB at `/.n8n/database.sqlite`, env at `/opt/n8n.env`  
-**n8n public URL:** https://n8n.diogonmoura.com (behind Cloudflare proxy)
+**Target server:** Proxmox LXC — Debian 13 (trixie) — `YOUR_SERVER_IP`
+**n8n:** native systemd service, SQLite DB at `/.n8n/database.sqlite`, env at `/opt/n8n.env`
+**n8n public URL:** `https://n8n.yourdomain.com` (behind Cloudflare proxy)
 
 ---
 
@@ -54,13 +54,13 @@ All `{{PLACEHOLDER}}` and `REPLACE_*` values were filled:
 | Placeholder | Value |
 |---|---|
 | `{{N8N_API_KEY}}` | Real key from `user_api_keys` table |
-| `{{N8N_URL}}` | `https://n8n.diogonmoura.com` |
+| `{{N8N_URL}}` | `https://n8n.yourdomain.com` |
 | `{{N8N_INTERNAL_URL}}` | `http://localhost:5678` |
-| `{{SUPABASE_URL}}` | `http://192.168.4.236:8000` |
+| `{{SUPABASE_URL}}` | `http://YOUR_SERVER_IP:8000` |
 | `{{SUPABASE_SERVICE_KEY}}` | From `/opt/n8n-claw/.env` |
-| `REPLACE_MCP_BUILDER_ID` | `aU37moAbc0oYSKBL` |
-| `REPLACE_REMINDER_FACTORY_ID` | `5lGVnpeRuIdaNdTR` |
-| `REPLACE_WORKFLOW_BUILDER_ID` | `fV2jLmWZkTwc0ogs` |
+| `REPLACE_MCP_BUILDER_ID` | `<auto-assigned by n8n after import>` |
+| `REPLACE_REMINDER_FACTORY_ID` | `<auto-assigned by n8n after import>` |
+| `REPLACE_WORKFLOW_BUILDER_ID` | `<auto-assigned by n8n after import>` |
 | `REPLACE-WITH-BRAVE` | `no-brave-key` (no Brave API key) |
 
 ### 8. Credential Wiring
@@ -74,7 +74,7 @@ Credentials created in n8n UI and mapped to workflows:
 | `HTTP Header Auth (Kong)` | HTTP Header Auth | Kong API gateway (header: `apikey`) |
 | `Claude Code Runner SSH` | SSH (claudeCodeSshApi) | WorkflowBuilder Claude Code node |
 
-> **Important:** PostgreSQL host must be `127.0.0.1` not `192.168.4.236` — the container binds to localhost only.
+> **Important:** PostgreSQL host must be `127.0.0.1` not your server IP — the container binds to localhost only.
 
 ### 9. Claude Code CLI
 - Installed: `npm install -g @anthropic-ai/claude-code`
@@ -162,9 +162,9 @@ Then restart n8n to clear in-memory state.
 **Fix:**
 ```python
 CRED_MAP = {
-    'telegramApi':  'LcSLpf2ZFy3hfpSA',   # n8n-claw Diogo
-    'postgres':     '3wuYPlc6muLXVqkq',    # Postgres (Supabase)
-    'anthropicApi': 'gP1RpDIjhxvDdObx',    # Anthropic account
+    'telegramApi':  '<your-telegram-cred-id>',   # n8n-claw Telegram credential
+    'postgres':     '<your-postgres-cred-id>',    # Postgres (Supabase)
+    'anthropicApi': '<your-anthropic-cred-id>',   # Anthropic account
 }
 # Fix in both workflow_entity AND workflow_history
 ```
@@ -194,7 +194,7 @@ conn.execute("UPDATE user_api_keys SET scopes=? WHERE id=?", [json.dumps(scopes)
 **Fix:** In n8n UI, toggle the workflow **OFF** then back **ON** — forces n8n to re-register the Telegram webhook with a fresh secret token.
 
 ### 12. MCP calls blocked by Cloudflare (403)
-**Cause:** MCP URLs in `mcp_registry` pointed to `https://n8n.diogonmoura.com/mcp/...` — Cloudflare Access blocks unauthenticated internal calls.  
+**Cause:** MCP URLs in `mcp_registry` pointed to `https://n8n.yourdomain.com/mcp/...` — Cloudflare Access blocks unauthenticated internal calls.  
 **Fix:** Always use `http://localhost:5678/mcp/<path>` for internal MCP URLs.
 ```sql
 UPDATE mcp_registry SET mcp_url = 'http://localhost:5678/mcp/wetter' WHERE path = 'wetter';
@@ -236,7 +236,7 @@ UPDATE agents SET content='...(English content with localhost URLs)...'
 Telegram Bot
     │
     ▼ webhook POST
-https://n8n.diogonmoura.com  (Cloudflare → LXC 192.168.4.236)
+https://n8n.yourdomain.com  (Cloudflare → LXC YOUR_SERVER_IP)
     │
     ▼
 n8n systemd service (:5678)
@@ -290,12 +290,12 @@ Key Supabase tables:
 
 | Workflow | ID |
 |---|---|
-| 🤖 n8n-claw Agent | `1bWsf3xmeDNnqqjW` |
-| 🏗️ MCP Builder | `aU37moAbc0oYSKBL` |
-| 🔌 MCP Client | `yevQh8AqHdO8uU9X` |
-| ⛅ MCP: Weather | `kr70AGoQJ0v4wIfv` |
-| 🔔 ReminderFactory | `5lGVnpeRuIdaNdTR` |
-| 🔨 WorkflowBuilder | `fV2jLmWZkTwc0ogs` |
+| 🤖 n8n-claw Agent | `<auto-assigned after import>` |
+| 🏗️ MCP Builder | `<auto-assigned after import>` |
+| 🔌 MCP Client | `<auto-assigned after import>` |
+| ⛅ MCP: Weather | `<auto-assigned after import>` |
+| 🔔 ReminderFactory | `<auto-assigned after import>` |
+| 🔨 WorkflowBuilder | `<auto-assigned after import>` |
 
 ---
 

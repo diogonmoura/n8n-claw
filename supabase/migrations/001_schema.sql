@@ -947,7 +947,7 @@ ALTER TABLE public.user_profiles
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'supabase_admin') THEN
-    CREATE ROLE supabase_admin WITH LOGIN SUPERUSER PASSWORD 'supabase_admin';
+    CREATE ROLE supabase_admin WITH LOGIN SUPERUSER PASSWORD 'CHANGE_ME_SUPABASE_ADMIN_PASSWORD';
   END IF;
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'anon') THEN
     CREATE ROLE anon NOLOGIN;
