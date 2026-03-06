@@ -1,0 +1,4 @@
+.env
+supabase/kong.deployed.yml
+*.pyc
+__pycache__/

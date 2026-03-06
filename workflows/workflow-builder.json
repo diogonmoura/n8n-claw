@@ -1,0 +1,113 @@
+{
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "name": "WorkflowBuilder",
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "BuildPrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildPrompt": {
+      "main": [
+        [
+          {
+            "node": "Claude Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Code": {
+      "main": [
+        [
+          {
+            "node": "FormatOutput",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "wfb-start"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse input from AI Agent tool call\nconst raw = $input.first().json;\nlet task = '';\ntry {\n  const p = JSON.parse(raw.query || '{}');\n  task = p.task || p.description || p.prompt || raw.query || '';\n} catch(e) {\n  task = raw.task || raw.query || JSON.stringify(raw);\n}\n\nconst prompt = `You are an n8n workflow expert. Your task: create a complete, working n8n workflow.\n\nTASK: ${task}\n\nSTEPS:\n1. Read /workspace/n8n-reference/CHEATSHEET.md for API access, node types and workflow structure\n2. Check example workflows in /workspace/n8n-reference/example-*.json\n3. Create the workflow JSON file\n4. Create any required credentials via curl (see Cheatsheet)\n5. Create the workflow via curl POST to the n8n API\n6. Activate the workflow via curl POST\n7. Reply with: workflow name, ID, and what it does\n\nWICHTIG:\n- Use curl for all API calls (NOT MCP)\n- n8n expressions MÜSSEN mit = prefix starten: \"={{ $json.field }}\"\n- All info is in CHEATSHEET.md\n- Build COMPLETE, FUNCTIONAL workflows - no placeholders!`;\n\nreturn [{json: {prompt, task}}];"
+      },
+      "name": "BuildPrompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "wfb-prompt"
+    },
+    {
+      "parameters": {
+        "connectionMode": "ssh",
+        "prompt": "={{ $json.prompt }}",
+        "permissionMode": "bypassPermissions",
+        "toolPermissions": {},
+        "model": "sonnet",
+        "options": {
+          "maxTurns": 25,
+          "timeout": 120000,
+          "systemPrompt": "You are an n8n workflow expert. RULES:\n1. Read /workspace/n8n-reference/CHEATSHEET.md FIRST\n2. Then ACT IMMEDIATELY - run curl commands, do not overthink\n3. Use ONLY curl and Bash for the n8n API (no MCP)\n4. Write the workflow JSON to a file, then curl POST\n5. Create required credentials FIRST, then the workflow\n6. Activate the workflow at the end\n7. Reply briefly: what was built + workflow ID\n\nIMPORTANT: No overthinking! Start immediately with the first Bash command.",
+          "additionalArgs": "--model sonnet"
+        }
+      },
+      "name": "Claude Code",
+      "type": "n8n-nodes-claude-code-cli.claudeCode",
+      "typeVersion": 1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "wfb-claude",
+      "credentials": {
+        "claudeCodeSshApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Claude Code Runner SSH"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract Claude Code's response - try all possible fields\nconst result = $input.first().json;\n\n// The node outputs: success, sessionId, output, rawOutput, exitCode, duration, cost, error\n// 'output' should have the text result, 'rawOutput' has the full JSON\nconst output = result.output \n  || result.result \n  || result.text \n  || (result.rawOutput && result.rawOutput.result)\n  || JSON.stringify(result);\n\nreturn [{json: {\n  response: output || 'Claude Code completed but returned no text output. Check n8n execution log for details.',\n  cost: result.cost || (result.rawOutput && result.rawOutput.total_cost_usd) || null,\n  session_id: result.sessionId || (result.rawOutput && result.rawOutput.session_id) || null,\n  success: result.success,\n  duration_s: result.duration ? Math.round(result.duration / 1000) : null,\n  // Debug: include raw keys to diagnose empty outputs\n  _debug_keys: Object.keys(result).join(','),\n  _debug_output_length: (output || '').length\n}}];"
+      },
+      "name": "FormatOutput",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "wfb-output"
+    }
+  ]
+}
