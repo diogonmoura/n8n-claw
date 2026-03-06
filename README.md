@@ -1,11 +1,14 @@
 # n8n-claw
 
+> **Based on [freddy-schuetz/n8n-claw](https://github.com/freddy-schuetz/n8n-claw)** — all credit for the original concept, workflows and architecture goes to [@freddy-schuetz](https://github.com/freddy-schuetz).
+>
+> This fork adds a fully automated deployment setup (`setup.sh`), parameterized workflow templates, English translations, and a collection of fixes discovered during a real-world deployment on Proxmox/Debian. See [`docs/DEPLOYMENT_LOG.md`](docs/DEPLOYMENT_LOG.md) for the full list of changes.
+
+---
+
 A self-hosted AI Telegram agent built on n8n + Claude (Anthropic) + Supabase.
 Send a message to your Telegram bot and Claude handles it — with memory, tool use,
 MCP server support, reminders, and a workflow builder.
-
-This repository contains all fixes baked in from the original
-[n8n-claw](https://github.com/freddy-schuetz/n8n-claw) deployment.
 
 ---
 
