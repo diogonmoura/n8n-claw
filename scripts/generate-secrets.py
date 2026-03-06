@@ -19,6 +19,7 @@ def generate_jwt(payload, secret):
     return f"{msg}.{sig}"
 
 POSTGRES_PASSWORD = secrets.token_urlsafe(16)
+SUPABASE_ADMIN_PASSWORD = secrets.token_urlsafe(16)
 JWT_SECRET = base64.b64encode(secrets.token_bytes(32)).decode()
 now = int(time.time())
 
@@ -32,6 +33,7 @@ SERVICE_KEY = generate_jwt(
 )
 
 print(f"POSTGRES_PASSWORD={POSTGRES_PASSWORD}")
+print(f"SUPABASE_ADMIN_PASSWORD={SUPABASE_ADMIN_PASSWORD}")
 print(f"SUPABASE_JWT_SECRET={JWT_SECRET}")
 print(f"SUPABASE_ANON_KEY={ANON_KEY}")
 print(f"SUPABASE_SERVICE_KEY={SERVICE_KEY}")
@@ -44,6 +46,7 @@ if '--update-env' in sys.argv:
             content = f.read()
         for key, val in [
             ('POSTGRES_PASSWORD', POSTGRES_PASSWORD),
+            ('SUPABASE_ADMIN_PASSWORD', SUPABASE_ADMIN_PASSWORD),
             ('SUPABASE_JWT_SECRET', JWT_SECRET),
             ('SUPABASE_ANON_KEY', ANON_KEY),
             ('SUPABASE_SERVICE_KEY', SERVICE_KEY),

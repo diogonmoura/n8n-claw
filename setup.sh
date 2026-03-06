@@ -112,7 +112,7 @@ ENVEOF
 
 # ── Generate Supabase secrets ─────────────────────────────────────────────────
 generate_secrets() {
-  if [ -z "${POSTGRES_PASSWORD:-}" ] || [ -z "${SUPABASE_JWT_SECRET:-}" ]; then
+  if [ -z "${POSTGRES_PASSWORD:-}" ] || [ -z "${SUPABASE_JWT_SECRET:-}" ] || [ -z "${SUPABASE_ADMIN_PASSWORD:-}" ]; then
     echo "Generating Supabase secrets..."
     python3 "$SCRIPT_DIR/scripts/generate-secrets.py" --update-env
     set -a; source "$ENV_FILE"; set +a
@@ -157,10 +157,11 @@ run_migrations() {
   docker exec n8n-claw-db psql -U postgres -d postgres \
     -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>/dev/null || true
 
-  # Run schema (ON_ERROR_STOP=off to skip pre-existing objects)
-  docker exec -i n8n-claw-db psql -U postgres -d postgres \
-    --set ON_ERROR_STOP=off \
-    < "$SCRIPT_DIR/supabase/migrations/001_schema.sql" 2>&1 | tail -5
+  # Run schema (substitute admin password from .env, ON_ERROR_STOP=off to skip pre-existing objects)
+  sed "s|CHANGE_ME_SUPABASE_ADMIN_PASSWORD|${SUPABASE_ADMIN_PASSWORD}|g" \
+    "$SCRIPT_DIR/supabase/migrations/001_schema.sql" \
+    | docker exec -i n8n-claw-db psql -U postgres -d postgres \
+        --set ON_ERROR_STOP=off 2>&1 | tail -5
 
   # Run English seed with variable substitution
   SEED=$(cat "$SCRIPT_DIR/supabase/migrations/002_seed_en.sql")
